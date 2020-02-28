@@ -1,3 +1,6 @@
+/* tslint:disable */
+import { BigNumber } from 'bignumber.js';
+/* tslint:enable */
 
 export const BigNumberSetup = {
     configure() {
