@@ -20,6 +20,7 @@ pragma experimental "ABIEncoderV2";
 import { ERC20Viewer } from "./lib/ERC20Viewer.sol";
 import { RebalancingSetTokenViewer } from "./lib/RebalancingSetTokenViewer.sol";
 import { TradingPoolViewer } from "./lib/TradingPoolViewer.sol";
+import { CTokenViewer } from "./lib/CTokenViewer.sol";
 
 
 /**
@@ -34,5 +35,6 @@ import { TradingPoolViewer } from "./lib/TradingPoolViewer.sol";
 contract ProtocolViewer is
     ERC20Viewer,
     RebalancingSetTokenViewer,
-    TradingPoolViewer
+    TradingPoolViewer,
+    CTokenViewer
 {}
