@@ -41,7 +41,7 @@ contract CTokenViewer {
         // Instantiate output array in memory
         uint256[] memory cTokenExchangeRates = new uint256[](_addressesCount);
 
-        // Cycle through contract addresses array and fetching the balance of each for the owner
+        // Cycle through contract addresses array and fetching the exchange rate of each for the owner
         for (uint256 i = 0; i < _addressesCount; i++) {
             cTokenExchangeRates[i] = ICToken(_cTokenAddresses[i]).exchangeRateStored();
         }
