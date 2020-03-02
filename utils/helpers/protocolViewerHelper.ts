@@ -1,5 +1,6 @@
 import { Address } from 'set-protocol-utils';
 import {
+  CTokenViewerContract,
   ERC20ViewerContract,
   ProtocolViewerContract,
   RebalancingSetTokenViewerContract,
@@ -8,6 +9,7 @@ import {
 } from '../contracts';
 import { getContractInstance, txnFrom } from '../web3Helper';
 
+const CTokenViewer = artifacts.require('CTokenViewer');
 const ERC20Viewer = artifacts.require('ERC20Viewer');
 const ProtocolViewer = artifacts.require('ProtocolViewer');
 const RebalancingSetTokenViewer = artifacts.require('RebalancingSetTokenViewer');
@@ -23,6 +25,20 @@ export class ProtocolViewerHelper {
   }
 
   /* ============ Deployment ============ */
+
+  public async deployCTokenViewerAsync(
+    from: Address = this._contractOwnerAddress
+  ): Promise<CTokenViewerContract> {
+    const
+    cTokenViewer = await CTokenViewer.new(
+      txnFrom(from)
+    );
+
+    return new CTokenViewerContract(
+      getContractInstance(cTokenViewer),
+      txnFrom(from),
+    );
+  }
 
   public async deployERC20ViewerContract(
     from: Address = this._contractOwnerAddress

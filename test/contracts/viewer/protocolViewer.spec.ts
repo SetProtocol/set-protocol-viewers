@@ -45,6 +45,7 @@ import {
 
 import {
   Blockchain,
+  CompoundHelper,
   CoreHelper,
   ERC20Helper,
   FeeCalculatorHelper,
@@ -90,6 +91,7 @@ contract('ProtocolViewer', accounts => {
   const liquidatorHelper = new LiquidatorHelper(deployerAccount, erc20Helper, valuationHelper);
   const feeCalculatorHelper = new FeeCalculatorHelper(deployerAccount);
   const viewerHelper = new ProtocolViewerHelper(deployerAccount);
+  const compoundHelper = new CompoundHelper(deployerAccount);
 
   let protocolViewer: ProtocolViewerContract;
 
@@ -773,6 +775,60 @@ contract('ProtocolViewer', accounts => {
 
         expect(JSON.stringify(actualEntryRebalanceArray)).to.equal(JSON.stringify(expectedEntryRebalanceArray));
       });
+    });
+  });
+
+  describe('#batchFetchExchangeRateStored', async () => {
+    let cUSDCAddress: Address;
+    let cDAIAddress: Address;
+
+    let subjectTokenAddresses: Address[];
+
+    beforeEach(async () => {
+      // Set up Compound USDC token
+      const usdcInstance = await erc20Helper.deployTokenAsync(
+        deployerAccount,
+        6,
+      );
+
+      cUSDCAddress = await compoundHelper.deployMockCUSDC(usdcInstance.address, deployerAccount);
+
+      await compoundHelper.enableCToken(cUSDCAddress);
+      // Set the Borrow Rate
+      await compoundHelper.setBorrowRate(cUSDCAddress, new BigNumber('43084603999'));
+
+      // Set up Compound DAI token
+      const daiInstance = await erc20Helper.deployTokenAsync(
+        deployerAccount,
+        18,
+      );
+      cDAIAddress = await compoundHelper.deployMockCDAI(daiInstance.address, deployerAccount);
+      await compoundHelper.enableCToken(cDAIAddress);
+      // Set the Borrow Rate
+      await compoundHelper.setBorrowRate(cDAIAddress, new BigNumber('29313252165'));
+
+      subjectTokenAddresses = [cUSDCAddress, cDAIAddress];
+    });
+
+    async function subject(): Promise<BigNumber[]> {
+      return protocolViewer.batchFetchExchangeRateStored.callAsync(
+        subjectTokenAddresses,
+      );
+    }
+
+    it('fetches the exchangeRates of the token addresses', async () => {
+      const exchangeRates: BigNumber[] = await subject();
+      const exchangeRatesJSON = JSON.stringify(exchangeRates);
+      const expectedExchangeRates: BigNumber[] = [];
+
+      for (let i = 0; i < subjectTokenAddresses.length; i++) {
+        const expectedExchangeRate = await compoundHelper.getExchangeRate(subjectTokenAddresses[i]);
+
+        expectedExchangeRates.push(expectedExchangeRate);
+      }
+      const expectedExchangeRatesJSON = JSON.stringify(expectedExchangeRates);
+
+      expect(exchangeRatesJSON).to.equal(expectedExchangeRatesJSON);
     });
   });
 });
