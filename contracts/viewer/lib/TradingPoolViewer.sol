@@ -22,10 +22,14 @@ import { ERC20Detailed } from "openzeppelin-solidity/contracts/token/ERC20/ERC20
 import { ISocialTradingManager } from "set-protocol-strategies/contracts/managers/interfaces/ISocialTradingManager.sol";
 import { SocialTradingLibrary } from "set-protocol-strategies/contracts/managers/lib/SocialTradingLibrary.sol";
 
+import { IFeeCalculator } from "set-protocol-contracts/contracts/core/interfaces/IFeeCalculator.sol";
 import { ILiquidator } from "set-protocol-contracts/contracts/core/interfaces/ILiquidator.sol";
+import { IPerformanceFeeCalculator } from "set-protocol-contracts/contracts/core/interfaces/IPerformanceFeeCalculator.sol";
 import { IRebalancingSetTokenV2 } from "set-protocol-contracts/contracts/core/interfaces/IRebalancingSetTokenV2.sol";
-import { RebalancingLibrary } from "set-protocol-contracts/contracts/core/lib/RebalancingLibrary.sol";
+import { IRebalancingSetTokenV3 } from "set-protocol-contracts/contracts/core/interfaces/IRebalancingSetTokenV3.sol";
 import { ISetToken } from "set-protocol-contracts/contracts/core/interfaces/ISetToken.sol";
+import { PerformanceFeeLibrary } from "set-protocol-contracts/contracts/core/fee-calculators/lib/PerformanceFeeLibrary.sol";
+import { RebalancingLibrary } from "set-protocol-contracts/contracts/core/lib/RebalancingLibrary.sol";
 
 
 /**
@@ -80,28 +84,51 @@ contract TradingPoolViewer {
         view
         returns (SocialTradingLibrary.PoolInfo memory, TradingPoolCreateInfo memory, CollateralSetInfo memory)
     {
-        TradingPoolCreateInfo memory tradingPoolInfo = TradingPoolCreateInfo({
-            manager: _tradingPool.manager(),
-            feeRecipient: _tradingPool.feeRecipient(),
-            currentSet: _tradingPool.currentSet(),
-            unitShares: _tradingPool.unitShares(),
-            naturalUnit: _tradingPool.naturalUnit(),
-            rebalanceInterval: _tradingPool.rebalanceInterval(),
-            entryFee: _tradingPool.entryFee(),
-            rebalanceFee: _tradingPool.rebalanceFee(),
-            lastRebalanceTimestamp: _tradingPool.lastRebalanceTimestamp(),
-            rebalanceState: _tradingPool.rebalanceState(),
-            name: _tradingPool.name(),
-            symbol: _tradingPool.symbol()
-        });
+        TradingPoolCreateInfo memory tradingPoolInfo = getTradingPoolInfo(
+            address(_tradingPool)
+        );
 
         SocialTradingLibrary.PoolInfo memory poolInfo = ISocialTradingManager(tradingPoolInfo.manager).pools(
             address(_tradingPool)
         );
 
-        CollateralSetInfo memory collateralSetInfo = getCollateralSetInfo(tradingPoolInfo.currentSet);
+        CollateralSetInfo memory collateralSetInfo = getCollateralSetInfo(
+            tradingPoolInfo.currentSet
+        );
 
         return (poolInfo, tradingPoolInfo, collateralSetInfo);
+    }
+
+    function fetchNewTradingPoolV2Details(
+        IRebalancingSetTokenV3 _tradingPool
+    )
+        external
+        view
+        returns (
+            TradingPoolCreateInfo memory,
+            // SocialTradingLibrary.PoolInfo memory
+            PerformanceFeeLibrary.FeeState memory,
+            CollateralSetInfo memory
+        )
+    {
+        TradingPoolCreateInfo memory tradingPoolInfo = getTradingPoolInfo(
+            address(_tradingPool)
+        );
+
+        // SocialTradingLibrary.PoolInfo memory poolInfo = ISocialTradingManager(tradingPoolInfo.manager).pools(
+        //     address(_tradingPool)
+        // );
+
+        PerformanceFeeLibrary.FeeState memory performanceFeeInfo = getPerformanceFeeState(
+            address(_tradingPool)
+        );
+
+        CollateralSetInfo memory collateralSetInfo = getCollateralSetInfo(
+            tradingPoolInfo.currentSet
+        );
+
+        return (tradingPoolInfo, performanceFeeInfo, collateralSetInfo);
+        // return (tradingPoolInfo, poolInfo, performanceFeeInfo, collateralSetInfo);
     }
 
     function fetchTradingPoolRebalanceDetails(
@@ -136,6 +163,30 @@ contract TradingPoolViewer {
         CollateralSetInfo memory collateralSetInfo = getCollateralSetInfo(_tradingPool.nextSet());
 
         return (poolInfo, tradingPoolInfo, collateralSetInfo);
+    }
+
+    function batchFetchTradingPoolOperator(
+        IRebalancingSetTokenV2[] calldata _tradingPools
+    )
+        external
+        view
+        returns (address[] memory)
+    {
+        // Cache length of addresses to fetch owner for
+        uint256 _poolCount = _tradingPools.length;
+        
+        // Instantiate output array in memory
+        address[] memory operators = new address[](_poolCount);
+
+        for (uint256 i = 0; i < _poolCount; i++) {
+            IRebalancingSetTokenV2 tradingPool = _tradingPools[i];
+
+            operators[i] = ISocialTradingManager(tradingPool.manager()).pools(
+                address(tradingPool)
+            ).trader;
+        }
+
+        return operators;
     }
 
     function batchFetchTradingPoolEntryFees(
@@ -178,6 +229,29 @@ contract TradingPoolViewer {
         return rebalanceFees;
     }
 
+
+    function batchFetchTradingPoolFeeState(
+        IRebalancingSetTokenV3[] calldata _tradingPools
+    )
+        external
+        view
+        returns (PerformanceFeeLibrary.FeeState[] memory)
+    {
+        // Cache length of addresses to fetch rebalanceFees for
+        uint256 _poolCount = _tradingPools.length;
+        
+        // Instantiate output array in memory
+        PerformanceFeeLibrary.FeeState[] memory feeStates = new PerformanceFeeLibrary.FeeState[](_poolCount);
+
+        for (uint256 i = 0; i < _poolCount; i++) {
+            feeStates[i] = getPerformanceFeeState(
+                address(_tradingPools[i])
+            );
+        }
+
+        return feeStates;
+    }
+
     /* ============ Internal Functions ============ */
 
     function getCollateralSetInfo(
@@ -194,5 +268,43 @@ contract TradingPoolViewer {
             name: ERC20Detailed(address(_collateralSet)).name(),
             symbol: ERC20Detailed(address(_collateralSet)).symbol()
         });
+    }
+
+    function getTradingPoolInfo(
+        address _tradingPool
+    )
+        internal
+        view
+        returns (TradingPoolCreateInfo memory)
+    {
+        IRebalancingSetTokenV2 rebalancingSetTokenV2Instance = IRebalancingSetTokenV2(_tradingPool);
+
+        return TradingPoolCreateInfo({
+            manager: rebalancingSetTokenV2Instance.manager(),
+            feeRecipient: rebalancingSetTokenV2Instance.feeRecipient(),
+            currentSet: rebalancingSetTokenV2Instance.currentSet(),
+            unitShares: rebalancingSetTokenV2Instance.unitShares(),
+            naturalUnit: rebalancingSetTokenV2Instance.naturalUnit(),
+            rebalanceInterval: rebalancingSetTokenV2Instance.rebalanceInterval(),
+            entryFee: rebalancingSetTokenV2Instance.entryFee(),
+            rebalanceFee: rebalancingSetTokenV2Instance.rebalanceFee(),
+            lastRebalanceTimestamp: rebalancingSetTokenV2Instance.lastRebalanceTimestamp(),
+            rebalanceState: rebalancingSetTokenV2Instance.rebalanceState(),
+            name: rebalancingSetTokenV2Instance.name(),
+            symbol: rebalancingSetTokenV2Instance.symbol()
+        });
+    }
+
+    function getPerformanceFeeState(
+        address _tradingPool
+    )
+        internal
+        view
+        returns (PerformanceFeeLibrary.FeeState memory)
+    {
+        IRebalancingSetTokenV3 rebalancingSetTokenV3Instance = IRebalancingSetTokenV3(_tradingPool);
+
+        address rebalanceFeeCalculatorAddress = address(rebalancingSetTokenV3Instance.rebalanceFeeCalculator());
+        return IPerformanceFeeCalculator(rebalanceFeeCalculatorAddress).feeState(_tradingPool);
     }
 }
