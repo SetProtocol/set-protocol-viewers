@@ -105,19 +105,20 @@ contract TradingPoolViewer {
         external
         view
         returns (
+            SocialTradingLibrary.PoolInfo memory,
             TradingPoolCreateInfo memory,
-            // SocialTradingLibrary.PoolInfo memory
             PerformanceFeeLibrary.FeeState memory,
-            CollateralSetInfo memory
+            CollateralSetInfo memory,
+            address
         )
     {
         TradingPoolCreateInfo memory tradingPoolInfo = getTradingPoolInfo(
             address(_tradingPool)
         );
 
-        // SocialTradingLibrary.PoolInfo memory poolInfo = ISocialTradingManager(tradingPoolInfo.manager).pools(
-        //     address(_tradingPool)
-        // );
+        SocialTradingLibrary.PoolInfo memory poolInfo = ISocialTradingManager(tradingPoolInfo.manager).pools(
+            address(_tradingPool)
+        );
 
         PerformanceFeeLibrary.FeeState memory performanceFeeInfo = getPerformanceFeeState(
             address(_tradingPool)
@@ -127,8 +128,9 @@ contract TradingPoolViewer {
             tradingPoolInfo.currentSet
         );
 
-        return (tradingPoolInfo, performanceFeeInfo, collateralSetInfo);
-        // return (tradingPoolInfo, poolInfo, performanceFeeInfo, collateralSetInfo);
+        address performanceFeeCalculatorAddress = address(_tradingPool.rebalanceFeeCalculator());
+
+        return (poolInfo, tradingPoolInfo, performanceFeeInfo, collateralSetInfo, performanceFeeCalculatorAddress);
     }
 
     function fetchTradingPoolRebalanceDetails(
@@ -227,6 +229,36 @@ contract TradingPoolViewer {
         }
 
         return rebalanceFees;
+    }
+
+    function batchFetchTradingPoolAccumulation(
+        IRebalancingSetTokenV3[] calldata _tradingPools
+    )
+        external
+        view
+        returns (uint256[] memory, uint256[] memory)
+    {
+        // Cache length of addresses to fetch rebalanceFees for
+        uint256 _poolCount = _tradingPools.length;
+        
+        // Instantiate streaming fees output array in memory
+        uint256[] memory streamingFees = new uint256[](_poolCount);
+
+        // Instantiate profit fees output array in memory
+        uint256[] memory profitFees = new uint256[](_poolCount);
+
+        for (uint256 i = 0; i < _poolCount; i++) {
+            address rebalanceFeeCalculatorAddress = address(_tradingPools[i].rebalanceFeeCalculator());
+            
+            (
+                streamingFees[i],
+                profitFees[i]
+            ) = IPerformanceFeeCalculator(rebalanceFeeCalculatorAddress).getCalculatedFees(
+                address(_tradingPools[i])
+            );
+        }
+
+        return (streamingFees, profitFees);
     }
 
 
