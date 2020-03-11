@@ -1,7 +1,10 @@
+import { BigNumber } from 'bignumber.js';
 import { Address } from 'set-protocol-utils';
 import {
   CTokenViewerContract,
   ERC20ViewerContract,
+  ManagerViewerContract,
+  TrendingManagerMockContract,
   ProtocolViewerContract,
   RebalancingSetTokenViewerContract,
   SocialTradingManagerMockContract,
@@ -11,6 +14,8 @@ import { getContractInstance, txnFrom } from '../web3Helper';
 
 const CTokenViewer = artifacts.require('CTokenViewer');
 const ERC20Viewer = artifacts.require('ERC20Viewer');
+const ManagerViewer = artifacts.require('ManagerViewer');
+const TrendingManagerMock = artifacts.require('TrendingManagerMock');
 const ProtocolViewer = artifacts.require('ProtocolViewer');
 const RebalancingSetTokenViewer = artifacts.require('RebalancingSetTokenViewer');
 const SocialTradingManagerMock = artifacts.require('SocialTradingManagerMock');
@@ -47,6 +52,20 @@ export class ProtocolViewerHelper {
 
     return new ERC20ViewerContract(
       getContractInstance(erc20ViewerContract),
+      txnFrom(from),
+    );
+  }
+
+  public async deployManagerViewerAsync(
+    from: Address = this._contractOwnerAddress
+  ): Promise<ManagerViewerContract> {
+    const
+    managerViewer = await ManagerViewer.new(
+      txnFrom(from)
+    );
+
+    return new ManagerViewerContract(
+      getContractInstance(managerViewer),
       txnFrom(from),
     );
   }
@@ -97,6 +116,21 @@ export class ProtocolViewerHelper {
 
     return new SocialTradingManagerMockContract(
       getContractInstance(socialManager),
+      txnFrom(from),
+    );
+  }
+
+  public async deployTrendingManagerMockAsync(
+    crossoverTimestamp: BigNumber,
+    from: Address = this._contractOwnerAddress
+  ): Promise<TrendingManagerMockContract> {
+    const trendingManagerMock = await TrendingManagerMock.new(
+      crossoverTimestamp,
+      txnFrom(from)
+    );
+
+    return new TrendingManagerMockContract(
+      getContractInstance(trendingManagerMock),
       txnFrom(from),
     );
   }

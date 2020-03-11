@@ -40,7 +40,7 @@
     "test-nocompile": "yarn transpile && yarn truffle-test-contracts",
     "test-continuous": "yarn deploy-development && yarn test",
     "transpile": "tsc",
-    "truffle-test-contracts": "truffle test `find transpiled/test/contracts/viewer -name 'protocolViewer.spec.js'`",
+    "truffle-test-contracts": "truffle test `find transpiled/test/contracts/viewer -name '*.spec.js'`",
     "prepublishOnly": "yarn dist",
     "flatten": "truffle-flattener contracts/managers/SocialTradingManager.sol"
   },

@@ -29,14 +29,48 @@ import { IMACOStrategyManagerV2 } from "set-protocol-strategies/contracts/manage
  */
 contract ManagerViewer {
 
-    function batchFetchMACOManagerV2Crossover(
+    function batchFetchMACOV2CrossoverTimestamp(
         IMACOStrategyManagerV2[] calldata _managers
     )
         external
         view
-        returns (address[] memory)
+        returns (uint256[] memory)
     {
+        // Cache length of addresses to fetch owner for
+        uint256 _managerCount = _managers.length;
         
+        // Instantiate output array in memory
+        uint256[] memory timestamps = new uint256[](_managerCount);
+
+        for (uint256 i = 0; i < _managerCount; i++) {
+            IMACOStrategyManagerV2 manager = _managers[i];
+
+            timestamps[i] = manager.lastCrossoverConfirmationTimestamp();
+        }
+
+        return timestamps;
+    }
+
+    function batchFetchAssetPairCrossoverTimestamp(
+        IAssetPairManager[] calldata _managers
+    )
+        external
+        view
+        returns (uint256[] memory)
+    {
+        // Cache length of addresses to fetch owner for
+        uint256 _managerCount = _managers.length;
+        
+        // Instantiate output array in memory
+        uint256[] memory timestamps = new uint256[](_managerCount);
+
+        for (uint256 i = 0; i < _managerCount; i++) {
+            IAssetPairManager manager = _managers[i];
+
+            timestamps[i] = manager.recentInitialProposeTimestamp();
+        }
+
+        return timestamps;
     }
     
 }

@@ -36,6 +36,7 @@ import {
 import {
   ProtocolViewerContract,
   SocialTradingManagerMockContract,
+  TrendingManagerMockContract
 } from '@utils/contracts';
 import { ether, gWei } from '@utils/units';
 import {
@@ -1575,6 +1576,71 @@ contract('ProtocolViewer', accounts => {
       const expectedExchangeRatesJSON = JSON.stringify(expectedExchangeRates);
 
       expect(exchangeRatesJSON).to.equal(expectedExchangeRatesJSON);
+    });
+  });
+
+  describe.only('Manager Viewer Tests', async () => {
+    let trendingManagerMock1: TrendingManagerMockContract;
+    let trendingManagerMock2: TrendingManagerMockContract;
+
+    let crossoverTimestamp1: BigNumber;
+    let crossoverTimestamp2: BigNumber;
+
+    beforeEach(async () => {
+      crossoverTimestamp1 = new BigNumber(14800000000);
+      crossoverTimestamp2 = new BigNumber(11800000000);
+      trendingManagerMock1 = await protocolViewerHelper.deployTrendingManagerMockAsync(
+        crossoverTimestamp1
+      );
+      trendingManagerMock2 = await protocolViewerHelper.deployTrendingManagerMockAsync(
+        crossoverTimestamp2
+      );
+    });
+
+    afterEach(async () => {
+      await blockchain.revertAsync();
+    });
+
+    describe('#batchFetchMACOV2CrossoverTimestamp', async () => {
+      let subjectManagerAddresses: Address[];
+
+      beforeEach(async () => {
+        subjectManagerAddresses = [trendingManagerMock1.address, trendingManagerMock2.address];
+      });
+
+      async function subject(): Promise<BigNumber[]> {
+        return protocolViewer.batchFetchMACOV2CrossoverTimestamp.callAsync(
+          subjectManagerAddresses,
+        );
+      }
+
+      it('fetches the lastCrossoverConfirmationTimestamp of the MACO Managers', async () => {
+        const actualCrossoverArray = await subject();
+
+        const expectedEntryFeeArray = [crossoverTimestamp1, crossoverTimestamp2];
+        expect(JSON.stringify(actualCrossoverArray)).to.equal(JSON.stringify(expectedEntryFeeArray));
+      });
+    });
+
+    describe('#batchFetchAssetPairCrossoverTimestamp', async () => {
+      let subjectManagerAddresses: Address[];
+
+      beforeEach(async () => {
+        subjectManagerAddresses = [trendingManagerMock1.address, trendingManagerMock2.address];
+      });
+
+      async function subject(): Promise<BigNumber[]> {
+        return protocolViewer.batchFetchAssetPairCrossoverTimestamp.callAsync(
+          subjectManagerAddresses,
+        );
+      }
+
+      it('fetches the recentInitialProposeTimestamp of the Asset Pair Managers', async () => {
+        const actualCrossoverArray = await subject();
+
+        const expectedEntryFeeArray = [crossoverTimestamp1, crossoverTimestamp2];
+        expect(JSON.stringify(actualCrossoverArray)).to.equal(JSON.stringify(expectedEntryFeeArray));
+      });
     });
   });
 });
