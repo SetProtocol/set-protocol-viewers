@@ -5,6 +5,7 @@ export { RebalancingSetTokenViewer } from './ts/RebalancingSetTokenViewer';
 export { TradingPoolViewer } from './ts/TradingPoolViewer';
 
 export {
+  BaseContract,
   CTokenViewerContract,
   ERC20ViewerContract,
   ProtocolViewerContract,
