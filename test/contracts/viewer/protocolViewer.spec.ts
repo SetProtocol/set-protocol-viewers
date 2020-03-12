@@ -608,7 +608,7 @@ contract('ProtocolViewer', accounts => {
       let ethPerformanceFeeCalculator: PerformanceFeeCalculatorContract;
 
       beforeEach(async () => {
-        rebalancingSetTokenV3Factory = await coreHelper.deployRebalancingSetTokenV3FactoryAsync(
+        rebalancingSetTokenV3Factory = await viewerHelper.deployRebalancingSetTokenV3FactoryAsync(
           coreMock.address,
           rebalancingComponentWhiteList.address,
           liquidatorWhitelist.address,
@@ -1053,7 +1053,7 @@ contract('ProtocolViewer', accounts => {
       let subjectIncreaseChainTime: BigNumber;
 
       beforeEach(async () => {
-        rebalancingSetTokenV3Factory = await coreHelper.deployRebalancingSetTokenV3FactoryAsync(
+        rebalancingSetTokenV3Factory = await viewerHelper.deployRebalancingSetTokenV3FactoryAsync(
           coreMock.address,
           rebalancingComponentWhiteList.address,
           liquidatorWhitelist.address,
@@ -1280,7 +1280,7 @@ contract('ProtocolViewer', accounts => {
       let secondRebalancingSetToken: RebalancingSetTokenV3Contract;
 
       beforeEach(async () => {
-        rebalancingSetTokenV3Factory = await coreHelper.deployRebalancingSetTokenV3FactoryAsync(
+        rebalancingSetTokenV3Factory = await viewerHelper.deployRebalancingSetTokenV3FactoryAsync(
           coreMock.address,
           rebalancingComponentWhiteList.address,
           liquidatorWhitelist.address,
@@ -1579,7 +1579,7 @@ contract('ProtocolViewer', accounts => {
     });
   });
 
-  describe.only('Manager Viewer Tests', async () => {
+  describe('Manager Viewer Tests', async () => {
     let trendingManagerMock1: TrendingManagerMockContract;
     let trendingManagerMock2: TrendingManagerMockContract;
 

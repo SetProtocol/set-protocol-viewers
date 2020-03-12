@@ -364,7 +364,7 @@ contract('TradingPoolViewer', accounts => {
     let ethPerformanceFeeCalculator: PerformanceFeeCalculatorContract;
 
     beforeEach(async () => {
-      rebalancingSetTokenV3Factory = await coreHelper.deployRebalancingSetTokenV3FactoryAsync(
+      rebalancingSetTokenV3Factory = await viewerHelper.deployRebalancingSetTokenV3FactoryAsync(
         coreMock.address,
         rebalancingComponentWhiteList.address,
         liquidatorWhitelist.address,
@@ -849,7 +849,7 @@ contract('TradingPoolViewer', accounts => {
     let subjectIncreaseChainTime: BigNumber;
 
     beforeEach(async () => {
-      rebalancingSetTokenV3Factory = await coreHelper.deployRebalancingSetTokenV3FactoryAsync(
+      rebalancingSetTokenV3Factory = await viewerHelper.deployRebalancingSetTokenV3FactoryAsync(
         coreMock.address,
         rebalancingComponentWhiteList.address,
         liquidatorWhitelist.address,
@@ -1064,7 +1064,7 @@ contract('TradingPoolViewer', accounts => {
     let subjectIncreaseChainTime: BigNumber;
 
     beforeEach(async () => {
-      rebalancingSetTokenV3Factory = await coreHelper.deployRebalancingSetTokenV3FactoryAsync(
+      rebalancingSetTokenV3Factory = await viewerHelper.deployRebalancingSetTokenV3FactoryAsync(
         coreMock.address,
         rebalancingComponentWhiteList.address,
         liquidatorWhitelist.address,
@@ -1291,7 +1291,7 @@ contract('TradingPoolViewer', accounts => {
     let secondRebalancingSetToken: RebalancingSetTokenV3Contract;
 
     beforeEach(async () => {
-      rebalancingSetTokenV3Factory = await coreHelper.deployRebalancingSetTokenV3FactoryAsync(
+      rebalancingSetTokenV3Factory = await viewerHelper.deployRebalancingSetTokenV3FactoryAsync(
         coreMock.address,
         rebalancingComponentWhiteList.address,
         liquidatorWhitelist.address,
