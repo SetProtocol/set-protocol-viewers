@@ -18,6 +18,7 @@ pragma solidity 0.5.7;
 pragma experimental "ABIEncoderV2";
 
 import { ERC20Viewer } from "./lib/ERC20Viewer.sol";
+import { ManagerViewer } from "./lib/ManagerViewer.sol";
 import { RebalancingSetTokenViewer } from "./lib/RebalancingSetTokenViewer.sol";
 import { TradingPoolViewer } from "./lib/TradingPoolViewer.sol";
 import { CTokenViewer } from "./lib/CTokenViewer.sol";
@@ -36,5 +37,6 @@ contract ProtocolViewer is
     ERC20Viewer,
     RebalancingSetTokenViewer,
     TradingPoolViewer,
-    CTokenViewer
+    CTokenViewer,
+    ManagerViewer
 {}
