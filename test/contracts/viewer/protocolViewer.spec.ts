@@ -356,6 +356,67 @@ contract('ProtocolViewer', accounts => {
       expect(minimumBid).to.be.bignumber.equal(ZERO);
       expect(remainingCurrentSets).to.be.bignumber.equal(ZERO);
     });
+
+    describe('#batchFetchUnitSharesAsync', async () => {
+      let subjectRebalancingSetAddresses: Address[];
+
+      let rebalancingSetToken: RebalancingSetTokenContract;
+      let setTokenOne: SetTokenContract;
+      let setTokenTwo: SetTokenContract;
+
+      let defaultRebalancingSetToken: RebalancingSetTokenContract;
+
+      beforeEach(async () => {
+        const naturalUnits = [ether(.001), ether(.0001)];
+
+        const setTokens = await rebalancingHelper.createSetTokensAsync(
+          coreMock,
+          factory.address,
+          transferProxy.address,
+          2,
+          naturalUnits
+        );
+
+        setTokenOne = setTokens[0];
+        setTokenTwo = setTokens[1];
+
+        rebalancingSetToken = await rebalancingHelper.createDefaultRebalancingSetTokenAsync(
+          coreMock,
+          rebalancingFactory.address,
+          managerAccount,
+          setTokenOne.address,
+          ONE_DAY_IN_SECONDS
+        );
+
+        defaultRebalancingSetToken = await rebalancingHelper.createDefaultRebalancingSetTokenAsync(
+          coreMock,
+          rebalancingFactory.address,
+          managerAccount,
+          setTokenTwo.address,
+          ONE_DAY_IN_SECONDS
+        );
+
+        subjectRebalancingSetAddresses = [rebalancingSetToken.address, defaultRebalancingSetToken.address];
+      });
+
+      async function subject(): Promise<BigNumber[]> {
+        return protocolViewer.batchFetchUnitSharesAsync.callAsync(
+          subjectRebalancingSetAddresses,
+        );
+      }
+
+      it('fetches the RebalancingSetTokens\' unitShares', async () => {
+        const rebalanceUnitShares: BigNumber[] = await subject();
+
+        const firstUnitShares = rebalanceUnitShares[0];
+        const firstExpectedUnitShares = await rebalancingSetToken.unitShares.callAsync();
+        expect(firstUnitShares).to.be.bignumber.equal(firstExpectedUnitShares);
+
+        const secondUnitShares = rebalanceUnitShares[1];
+        const secondExpectedUnitShares = await defaultRebalancingSetToken.unitShares.callAsync();
+        expect(secondUnitShares).to.be.bignumber.equal(secondExpectedUnitShares);
+      });
+    });
   });
 
   describe('Trading Pool Tests', async () => {

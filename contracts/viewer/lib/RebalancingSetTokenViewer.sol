@@ -122,4 +122,30 @@ contract RebalancingSetTokenViewer {
 
         return states;
     }
+
+    /*
+     * Fetches RebalancingSetToken unitShares for an array of RebalancingSetToken instances
+     *
+     * @param  _rebalancingSetTokens[]       RebalancingSetToken contract instances
+     * @return uint256[]                     Current unitShares on the RebalancingSetToken
+     */
+    function batchFetchUnitSharesAsync(
+        IRebalancingSetToken[] calldata _rebalancingSetTokens
+    )
+        external
+        returns (uint256[] memory)
+    {
+        // Cache length of addresses to fetch states for
+        uint256 _addressesCount = _rebalancingSetTokens.length;
+
+        // Instantiate output array in memory
+        uint256[] memory unitShares = new uint256[](_addressesCount);
+
+        // Cycle through contract addresses array and fetching the rebalance state of each RebalancingSet
+        for (uint256 i = 0; i < _addressesCount; i++) {
+            unitShares[i] = _rebalancingSetTokens[i].unitShares();
+        }
+
+        return unitShares;
+    }
 }
