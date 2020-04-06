@@ -14,7 +14,6 @@ import {
 } from 'set-protocol-oracles';
 import {
   ConstantAuctionPriceCurveContract,
-  CoreMock,
   CoreMockContract,
   FixedFeeCalculatorContract,
   LinearAuctionLiquidatorContract,
@@ -65,6 +64,9 @@ import {
   OracleHelper,
 } from 'set-protocol-oracles';
 import { ProtocolViewerHelper } from '@utils/helpers/protocolViewerHelper';
+
+const CoreMock =
+  require('set-protocol-contracts/dist/artifacts/ts/CoreMock').CoreMock;
 
 BigNumberSetup.configure();
 ChaiSetup.configure();

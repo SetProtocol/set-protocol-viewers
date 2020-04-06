@@ -9,7 +9,6 @@ import ChaiSetup from '@utils/chaiSetup';
 import { BigNumberSetup } from '@utils/bigNumberSetup';
 import {
   ConstantAuctionPriceCurveContract,
-  CoreMock,
   CoreMockContract,
   RebalancingSetTokenContract,
   RebalancingSetTokenFactoryContract,
@@ -38,6 +37,9 @@ import {
   RebalancingHelper,
 } from 'set-protocol-contracts';
 import { ProtocolViewerHelper } from '@utils/helpers/protocolViewerHelper';
+
+const CoreMock =
+  require('set-protocol-contracts/dist/artifacts/ts/CoreMock').CoreMock;
 
 BigNumberSetup.configure();
 ChaiSetup.configure();
