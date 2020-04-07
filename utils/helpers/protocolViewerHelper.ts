@@ -16,12 +16,17 @@ import {
   ONE_DAY_IN_SECONDS,
   DEFAULT_GAS,
 } from '../constants';
-import {
-  RebalancingSetTokenV3Factory,
-  RebalancingSetTokenV3FactoryContract,
-  FactoryUtilsLibrary,
-  Bytes32Library
-} from 'set-protocol-contracts';
+import { RebalancingSetTokenV3FactoryContract } from 'set-protocol-contracts';
+
+const RebalancingSetTokenV3Factory =
+  require(
+    'set-protocol-contracts/dist/artifacts/ts/RebalancingSetTokenV3Factory'
+  ).RebalancingSetTokenV3Factory;
+const FactoryUtilsLibrary =
+  require('set-protocol-contracts/dist/artifacts/ts/FactoryUtilsLibrary').FactoryUtilsLibrary;
+const Bytes32Library =
+  require('set-protocol-contracts/dist/artifacts/ts/Bytes32Library').Bytes32Library;
+
 
 const CTokenViewer = artifacts.require('CTokenViewer');
 const ERC20Viewer = artifacts.require('ERC20Viewer');

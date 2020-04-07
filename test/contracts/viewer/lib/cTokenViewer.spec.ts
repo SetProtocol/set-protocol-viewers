@@ -8,9 +8,6 @@ import { BigNumber } from 'bignumber.js';
 import ChaiSetup from '@utils/chaiSetup';
 import { BigNumberSetup } from '@utils/bigNumberSetup';
 import {
-  CoreMock,
-} from 'set-protocol-contracts';
-import {
   CTokenViewerContract,
 } from '@utils/contracts';
 import { expectRevertError } from '@utils/tokenAssertions';
@@ -21,6 +18,9 @@ import {
   ERC20Helper,
 } from 'set-protocol-contracts';
 import { ProtocolViewerHelper } from '@utils/helpers/protocolViewerHelper';
+
+const CoreMock =
+  require('set-protocol-contracts/dist/artifacts/ts/CoreMock').CoreMock;
 
 BigNumberSetup.configure();
 ChaiSetup.configure();
