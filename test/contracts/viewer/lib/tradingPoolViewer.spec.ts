@@ -25,6 +25,7 @@ import {
   SetTokenFactoryContract,
   StandardTokenMockContract,
   TransferProxyContract,
+  TWAPLiquidatorContract,
   VaultContract,
   WhiteListContract,
 } from 'set-protocol-contracts';
@@ -86,6 +87,7 @@ contract('TradingPoolViewer', accounts => {
   let rebalancingComponentWhiteList: WhiteListContract;
   let liquidatorWhitelist: WhiteListContract;
   let liquidator: LinearAuctionLiquidatorContract;
+  let twapLiquidator: TWAPLiquidatorContract;
   let fixedFeeCalculator: FixedFeeCalculatorContract;
   let feeCalculatorWhitelist: WhiteListContract;
 
@@ -217,6 +219,24 @@ contract('TradingPoolViewer', accounts => {
       name,
     );
     await coreHelper.addAddressToWhiteList(liquidator.address, liquidatorWhitelist);
+
+    const assetPairHashes = [
+      liquidatorHelper.generateAssetPairHashes(component1.address, component2.address),
+    ];
+    const assetPairBounds = [
+      {min: ether(10 ** 4).toString(), max: ether(10 ** 6).toString()},
+    ];
+    twapLiquidator = await viewerHelper.deployTWAPLiquidatorAsync(
+      coreMock.address,
+      oracleWhiteList.address,
+      auctionPeriod,
+      rangeStart,
+      rangeEnd,
+      assetPairHashes,
+      assetPairBounds,
+      name,
+    );
+    await coreHelper.addAddressToWhiteList(twapLiquidator.address, liquidatorWhitelist);
 
     fixedFeeCalculator = await feeCalculatorHelper.deployFixedFeeCalculatorAsync();
     await coreHelper.addAddressToWhiteList(fixedFeeCalculator.address, feeCalculatorWhitelist);
@@ -632,6 +652,219 @@ contract('TradingPoolViewer', accounts => {
 
     async function subject(): Promise<any> {
       return poolViewer.fetchTradingPoolRebalanceDetails.callAsync(
+        subjectTradingPool
+      );
+    }
+
+    it('fetches the correct poolInfo data', async () => {
+      const [ poolInfo, , ] = await subject();
+
+      expect(poolInfo.trader).to.equal(trader);
+      expect(poolInfo.allocator).to.equal(allocator);
+      expect(poolInfo.currentAllocation).to.be.bignumber.equal(newAllocation);
+      expect(poolInfo.newEntryFee).to.be.bignumber.equal(ZERO);
+      expect(poolInfo.feeUpdateTimestamp).to.be.bignumber.equal(ZERO);
+    });
+
+    it('fetches the correct RebalancingSetTokenV2/TradingPool data', async () => {
+      const [ , rbSetData, ] = await subject();
+
+      const auctionPriceParams = await rebalancingSetToken.getAuctionPriceParameters.callAsync();
+      const startingCurrentSets = await rebalancingSetToken.startingCurrentSetAmount.callAsync();
+      const biddingParams = await rebalancingSetToken.getBiddingParameters.callAsync();
+
+      expect(rbSetData.rebalanceStartTime).to.be.bignumber.equal(auctionPriceParams[0]);
+      expect(rbSetData.timeToPivot).to.be.bignumber.equal(auctionPriceParams[1]);
+      expect(rbSetData.startPrice).to.be.bignumber.equal(auctionPriceParams[2]);
+      expect(rbSetData.endPrice).to.be.bignumber.equal(auctionPriceParams[3]);
+      expect(rbSetData.startingCurrentSets).to.be.bignumber.equal(startingCurrentSets);
+      expect(rbSetData.remainingCurrentSets).to.be.bignumber.equal(biddingParams[1]);
+      expect(rbSetData.minimumBid).to.be.bignumber.equal(biddingParams[0]);
+      expect(rbSetData.rebalanceState).to.be.bignumber.equal(new BigNumber(2));
+      expect(rbSetData.nextSet).to.equal(nextSet.address);
+      expect(rbSetData.liquidator).to.equal(liquidator.address);
+    });
+
+    it('fetches the correct CollateralSet data', async () => {
+      const [ , , collateralSetData ] = await subject();
+
+      expect(JSON.stringify(collateralSetData.components)).to.equal(JSON.stringify(set2Components));
+      expect(JSON.stringify(collateralSetData.units)).to.equal(JSON.stringify(set2Units));
+      expect(collateralSetData.naturalUnit).to.be.bignumber.equal(set2NaturalUnit);
+      expect(collateralSetData.name).to.equal('Set Token');
+      expect(collateralSetData.symbol).to.equal('SET');
+    });
+  });
+
+  describe.only('#fetchRBSetTWAPRebalanceDetails', async () => {
+    let subjectTradingPool: Address;
+
+    let nextSet: SetTokenContract;
+
+    beforeEach(async () => {
+      rebalancingFactory = await coreHelper.deployRebalancingSetTokenV3FactoryAsync(
+        coreMock.address,
+        rebalancingComponentWhiteList.address,
+        liquidatorWhitelist.address,
+        feeCalculatorWhitelist.address,
+      );
+      await coreHelper.addFactoryAsync(coreMock, rebalancingFactory);
+
+      const currentSetToken = set1;
+
+      const failPeriod = ONE_DAY_IN_SECONDS;
+      const { timestamp } = await web3.eth.getBlock('latest');
+      const lastRebalanceTimestamp = timestamp;
+      rebalancingSetToken = await rebalancingSetV3Helper.createDefaultRebalancingSetTokenV3Async(
+        coreMock,
+        rebalancingFactory.address,
+        deployerAccount,
+        twapLiquidator.address,
+        feeRecipient,
+        fixedFeeCalculator.address,
+        currentSetToken.address,
+        failPeriod,
+        lastRebalanceTimestamp,
+      );
+
+      // Issue currentSetToken
+      await coreMock.issue.sendTransactionAsync(
+        currentSetToken.address,
+        ether(8),
+        {from: deployerAccount}
+      );
+      await erc20Helper.approveTransfersAsync([currentSetToken], transferProxy.address);
+
+      // Use issued currentSetToken to issue rebalancingSetToken
+      const rebalancingSetQuantityToIssue = ether(7);
+      await coreMock.issue.sendTransactionAsync(rebalancingSetToken.address, rebalancingSetQuantityToIssue);
+
+      await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS);
+
+      const liquidatorData = liquidatorHelper.generateTWAPLiquidatorCalldata(
+        ether(10 ** 6),
+        ONE_DAY_IN_SECONDS,
+      );
+      nextSet = set2;
+      await rebalancingSetToken.startRebalance.sendTransactionAsync(
+        nextSet.address,
+        liquidatorData
+      );
+
+      subjectTradingPool = rebalancingSetToken.address;
+    });
+
+    async function subject(): Promise<any> {
+      return poolViewer.fetchRBSetTWAPRebalanceDetails.callAsync(
+        subjectTradingPool
+      );
+    }
+
+    it('fetches the correct RebalancingSetTokenV2/TradingPool data', async () => {
+      const [ , rbSetData, ] = await subject();
+
+      const auctionPriceParams = await rebalancingSetToken.getAuctionPriceParameters.callAsync();
+      const startingCurrentSets = await rebalancingSetToken.startingCurrentSetAmount.callAsync();
+      const biddingParams = await rebalancingSetToken.getBiddingParameters.callAsync();
+
+      expect(rbSetData.rebalanceStartTime).to.be.bignumber.equal(auctionPriceParams[0]);
+      expect(rbSetData.timeToPivot).to.be.bignumber.equal(auctionPriceParams[1]);
+      expect(rbSetData.startPrice).to.be.bignumber.equal(auctionPriceParams[2]);
+      expect(rbSetData.endPrice).to.be.bignumber.equal(auctionPriceParams[3]);
+      expect(rbSetData.startingCurrentSets).to.be.bignumber.equal(startingCurrentSets);
+      expect(rbSetData.remainingCurrentSets).to.be.bignumber.equal(biddingParams[1]);
+      expect(rbSetData.minimumBid).to.be.bignumber.equal(biddingParams[0]);
+      expect(rbSetData.rebalanceState).to.be.bignumber.equal(new BigNumber(2));
+      expect(rbSetData.nextSet).to.equal(nextSet.address);
+      expect(rbSetData.liquidator).to.equal(liquidator.address);
+    });
+
+    it('fetches the correct CollateralSet data', async () => {
+      const [ , , collateralSetData ] = await subject();
+
+      expect(JSON.stringify(collateralSetData.components)).to.equal(JSON.stringify(set2Components));
+      expect(JSON.stringify(collateralSetData.units)).to.equal(JSON.stringify(set2Units));
+      expect(collateralSetData.naturalUnit).to.be.bignumber.equal(set2NaturalUnit);
+      expect(collateralSetData.name).to.equal('Set Token');
+      expect(collateralSetData.symbol).to.equal('SET');
+    });
+  });
+
+  describe('#fetchTradingPoolTWAPRebalanceDetails', async () => {
+    let subjectTradingPool: Address;
+    let setManager: SocialTradingManagerMockContract;
+
+    let newAllocation: BigNumber;
+    let nextSet: SetTokenContract;
+
+    beforeEach(async () => {
+      rebalancingFactory = await coreHelper.deployRebalancingSetTokenV3FactoryAsync(
+        coreMock.address,
+        rebalancingComponentWhiteList.address,
+        liquidatorWhitelist.address,
+        feeCalculatorWhitelist.address,
+      );
+      await coreHelper.addFactoryAsync(coreMock, rebalancingFactory);
+
+      const currentSetToken = set1;
+
+      setManager = await viewerHelper.deploySocialTradingManagerMockAsync();
+
+      const failPeriod = ONE_DAY_IN_SECONDS;
+      const { timestamp } = await web3.eth.getBlock('latest');
+      const lastRebalanceTimestamp = timestamp;
+      rebalancingSetToken = await rebalancingSetV3Helper.createDefaultRebalancingSetTokenV3Async(
+        coreMock,
+        rebalancingFactory.address,
+        setManager.address,
+        twapLiquidator.address,
+        feeRecipient,
+        fixedFeeCalculator.address,
+        currentSetToken.address,
+        failPeriod,
+        lastRebalanceTimestamp,
+      );
+
+      const currentAllocation = ether(.6);
+      await setManager.updateRecord.sendTransactionAsync(
+        rebalancingSetToken.address,
+        trader,
+        allocator,
+        currentAllocation
+      );
+
+      // Issue currentSetToken
+      await coreMock.issue.sendTransactionAsync(
+        currentSetToken.address,
+        ether(8),
+        {from: deployerAccount}
+      );
+      await erc20Helper.approveTransfersAsync([currentSetToken], transferProxy.address);
+
+      // Use issued currentSetToken to issue rebalancingSetToken
+      const rebalancingSetQuantityToIssue = ether(7);
+      await coreMock.issue.sendTransactionAsync(rebalancingSetToken.address, rebalancingSetQuantityToIssue);
+
+      await blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS);
+
+      const liquidatorData = liquidatorHelper.generateTWAPLiquidatorCalldata(
+        ether(10 ** 6),
+        ONE_DAY_IN_SECONDS,
+      );
+      nextSet = set2;
+      newAllocation = ether(.4);
+      await setManager.rebalance.sendTransactionAsync(
+        rebalancingSetToken.address,
+        nextSet.address,
+        newAllocation,
+        liquidatorData
+      );
+
+      subjectTradingPool = rebalancingSetToken.address;
+    });
+
+    async function subject(): Promise<any> {
+      return poolViewer.fetchTradingPoolTWAPRebalanceDetails.callAsync(
         subjectTradingPool
       );
     }
