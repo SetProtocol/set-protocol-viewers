@@ -696,7 +696,7 @@ contract('TradingPoolViewer', accounts => {
     });
   });
 
-  describe.only('#fetchRBSetTWAPRebalanceDetails', async () => {
+  describe('#fetchRBSetTWAPRebalanceDetails', async () => {
     let subjectTradingPool: Address;
 
     let nextSet: SetTokenContract;
@@ -761,7 +761,7 @@ contract('TradingPoolViewer', accounts => {
     }
 
     it('fetches the correct RebalancingSetTokenV2/TradingPool data', async () => {
-      const [ , rbSetData, ] = await subject();
+      const [ rbSetData, ] = await subject();
 
       const auctionPriceParams = await rebalancingSetToken.getAuctionPriceParameters.callAsync();
       const startingCurrentSets = await rebalancingSetToken.startingCurrentSetAmount.callAsync();
@@ -776,11 +776,11 @@ contract('TradingPoolViewer', accounts => {
       expect(rbSetData.minimumBid).to.be.bignumber.equal(biddingParams[0]);
       expect(rbSetData.rebalanceState).to.be.bignumber.equal(new BigNumber(2));
       expect(rbSetData.nextSet).to.equal(nextSet.address);
-      expect(rbSetData.liquidator).to.equal(liquidator.address);
+      expect(rbSetData.liquidator).to.equal(twapLiquidator.address);
     });
 
     it('fetches the correct CollateralSet data', async () => {
-      const [ , , collateralSetData ] = await subject();
+      const [ , collateralSetData ] = await subject();
 
       expect(JSON.stringify(collateralSetData.components)).to.equal(JSON.stringify(set2Components));
       expect(JSON.stringify(collateralSetData.units)).to.equal(JSON.stringify(set2Units));
@@ -895,7 +895,7 @@ contract('TradingPoolViewer', accounts => {
       expect(rbSetData.minimumBid).to.be.bignumber.equal(biddingParams[0]);
       expect(rbSetData.rebalanceState).to.be.bignumber.equal(new BigNumber(2));
       expect(rbSetData.nextSet).to.equal(nextSet.address);
-      expect(rbSetData.liquidator).to.equal(liquidator.address);
+      expect(rbSetData.liquidator).to.equal(twapLiquidator.address);
     });
 
     it('fetches the correct CollateralSet data', async () => {
