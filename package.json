@@ -1,6 +1,6 @@
 {
   "name": "set-protocol-viewers",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "main": "dist/artifacts/index.js",
   "typings": "dist/typings/artifacts/index.d.ts",
   "files": [
@@ -100,7 +100,7 @@
     "minify-all": "^1.2.2",
     "module-alias": "^2.1.0",
     "openzeppelin-solidity": "^2.2",
-    "set-protocol-contracts": "^1.4.5-beta",
+    "set-protocol-contracts": "^1.4.9-beta",
     "set-protocol-strategies": "^1.1.37",
     "set-protocol-oracles": "^1.0.16",
     "set-protocol-utils": "^1.1.2",

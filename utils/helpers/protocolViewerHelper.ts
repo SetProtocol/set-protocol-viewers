@@ -16,12 +16,16 @@ import {
   ONE_DAY_IN_SECONDS,
   DEFAULT_GAS,
 } from '../constants';
-import { RebalancingSetTokenV3FactoryContract } from 'set-protocol-contracts';
+import { RebalancingSetTokenV3FactoryContract, TWAPLiquidatorContract } from 'set-protocol-contracts';
 
 const RebalancingSetTokenV3Factory =
   require(
     'set-protocol-contracts/dist/artifacts/ts/RebalancingSetTokenV3Factory'
   ).RebalancingSetTokenV3Factory;
+  const TWAPLiquidator =
+  require(
+    'set-protocol-contracts/dist/artifacts/ts/TWAPLiquidator'
+  ).TWAPLiquidator;
 const FactoryUtilsLibrary =
   require('set-protocol-contracts/dist/artifacts/ts/FactoryUtilsLibrary').FactoryUtilsLibrary;
 const Bytes32Library =
@@ -199,6 +203,40 @@ export class ProtocolViewerHelper {
       deployedTokenFactory.address,
       web3,
       { from, gas: DEFAULT_GAS },
+    );
+  }
+
+  public async deployTWAPLiquidatorAsync(
+    core: Address,
+    oracleWhiteList: Address,
+    auctionPeriod: BigNumber,
+    rangeStart: BigNumber,
+    rangeEnd: BigNumber,
+    assetPairHashes: string[],
+    assetPairBounds: {}[],
+    name: string,
+    from: Address = this._contractOwnerAddress
+  ): Promise<TWAPLiquidatorContract> {
+    const assetPairBoundsStr = [];
+    for (let i = 0; i < assetPairBounds.length; i++) {
+      assetPairBoundsStr.push(assetPairBounds[i]);
+    }
+    const truffleLiquidator = this.setDefaultTruffleContract(web3, TWAPLiquidator);
+    const twapLiquidator = await truffleLiquidator.new(
+      core,
+      oracleWhiteList,
+      auctionPeriod,
+      rangeStart,
+      rangeEnd,
+      assetPairHashes,
+      assetPairBoundsStr,
+      name,
+      txnFrom(from)
+    );
+
+    return new TWAPLiquidatorContract(
+      getContractInstance(twapLiquidator),
+      txnFrom(from)
     );
   }
 

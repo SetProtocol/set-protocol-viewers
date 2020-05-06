@@ -27,6 +27,7 @@ import { ILiquidator } from "set-protocol-contracts/contracts/core/interfaces/IL
 import { IPerformanceFeeCalculator } from "set-protocol-contracts/contracts/core/interfaces/IPerformanceFeeCalculator.sol";
 import { IRebalancingSetTokenV2 } from "set-protocol-contracts/contracts/core/interfaces/IRebalancingSetTokenV2.sol";
 import { IRebalancingSetTokenV3 } from "set-protocol-contracts/contracts/core/interfaces/IRebalancingSetTokenV3.sol";
+import { ITWAPAuctionGetters } from "set-protocol-contracts/contracts/core/interfaces/ITWAPAuctionGetters.sol";
 import { ISetToken } from "set-protocol-contracts/contracts/core/interfaces/ISetToken.sol";
 import { PerformanceFeeLibrary } from "set-protocol-contracts/contracts/core/fee-calculators/lib/PerformanceFeeLibrary.sol";
 import { RebalancingLibrary } from "set-protocol-contracts/contracts/core/lib/RebalancingLibrary.sol";
@@ -69,12 +70,31 @@ contract TradingPoolViewer {
         ILiquidator liquidator;
     }
 
+    struct TradingPoolTWAPRebalanceInfo {
+        uint256 rebalanceStartTime;
+        uint256 timeToPivot;
+        uint256 startPrice;
+        uint256 endPrice;
+        uint256 startingCurrentSets;
+        uint256 remainingCurrentSets;
+        uint256 minimumBid;
+        RebalancingLibrary.State rebalanceState;
+        ISetToken nextSet;
+        ILiquidator liquidator;
+        uint256 orderSize;
+        uint256 orderRemaining;
+        uint256 totalSetsRemaining;
+        uint256 chunkSize;
+        uint256 chunkAuctionPeriod;
+        uint256 lastChunkAuctionEnd;
+    }
+
     struct CollateralSetInfo {
         address[] components;
         uint256[] units;
         uint256 naturalUnit;
         string name;
-        string symbol;    
+        string symbol;
     }
 
     function fetchNewTradingPoolDetails(
@@ -148,7 +168,7 @@ contract TradingPoolViewer {
             timeToPivot: auctionParams[1],
             startPrice: auctionParams[2],
             endPrice: auctionParams[3],
-            startingCurrentSets: _tradingPool.startingCurrentSetAmount(), 
+            startingCurrentSets: _tradingPool.startingCurrentSetAmount(),
             remainingCurrentSets: biddingParams[1],
             minimumBid: biddingParams[0],
             rebalanceState: _tradingPool.rebalanceState(),
@@ -167,6 +187,64 @@ contract TradingPoolViewer {
         return (poolInfo, tradingPoolInfo, collateralSetInfo);
     }
 
+    function fetchRBSetTWAPRebalanceDetails(
+        IRebalancingSetTokenV2 _rebalancingSetToken
+    )
+        public
+        view
+        returns (TradingPoolTWAPRebalanceInfo memory, CollateralSetInfo memory)
+    {
+        uint256[] memory auctionParams = _rebalancingSetToken.getAuctionPriceParameters();
+        uint256[] memory biddingParams = _rebalancingSetToken.getBiddingParameters();
+        ILiquidator liquidator = _rebalancingSetToken.liquidator();
+
+        ITWAPAuctionGetters twapStateGetters = ITWAPAuctionGetters(address(liquidator));
+
+        TradingPoolTWAPRebalanceInfo memory tradingPoolInfo = TradingPoolTWAPRebalanceInfo({
+            rebalanceStartTime: auctionParams[0],
+            timeToPivot: auctionParams[1],
+            startPrice: auctionParams[2],
+            endPrice: auctionParams[3],
+            startingCurrentSets: _rebalancingSetToken.startingCurrentSetAmount(),
+            remainingCurrentSets: biddingParams[1],
+            minimumBid: biddingParams[0],
+            rebalanceState: _rebalancingSetToken.rebalanceState(),
+            nextSet: _rebalancingSetToken.nextSet(),
+            liquidator: liquidator,
+            orderSize: twapStateGetters.getOrderSize(address(_rebalancingSetToken)),
+            orderRemaining: twapStateGetters.getOrderRemaining(address(_rebalancingSetToken)),
+            totalSetsRemaining: twapStateGetters.getTotalSetsRemaining(address(_rebalancingSetToken)),
+            chunkSize: twapStateGetters.getChunkSize(address(_rebalancingSetToken)),
+            chunkAuctionPeriod: twapStateGetters.getChunkAuctionPeriod(address(_rebalancingSetToken)),
+            lastChunkAuctionEnd: twapStateGetters.getLastChunkAuctionEnd(address(_rebalancingSetToken))
+        });
+
+        CollateralSetInfo memory collateralSetInfo = getCollateralSetInfo(_rebalancingSetToken.nextSet());
+
+        return (tradingPoolInfo, collateralSetInfo);
+    }
+
+    function fetchTradingPoolTWAPRebalanceDetails(
+        IRebalancingSetTokenV2 _tradingPool
+    )
+        external
+        view
+        returns (SocialTradingLibrary.PoolInfo memory, TradingPoolTWAPRebalanceInfo memory, CollateralSetInfo memory)
+    {
+        (
+            TradingPoolTWAPRebalanceInfo memory tradingPoolInfo,
+            CollateralSetInfo memory collateralSetInfo
+        ) = fetchRBSetTWAPRebalanceDetails(_tradingPool);
+
+        address manager = _tradingPool.manager();
+
+        SocialTradingLibrary.PoolInfo memory poolInfo = ISocialTradingManager(manager).pools(
+            address(_tradingPool)
+        );
+
+        return (poolInfo, tradingPoolInfo, collateralSetInfo);
+    }
+
     function batchFetchTradingPoolOperator(
         IRebalancingSetTokenV2[] calldata _tradingPools
     )
@@ -176,7 +254,7 @@ contract TradingPoolViewer {
     {
         // Cache length of addresses to fetch owner for
         uint256 _poolCount = _tradingPools.length;
-        
+
         // Instantiate output array in memory
         address[] memory operators = new address[](_poolCount);
 
@@ -200,7 +278,7 @@ contract TradingPoolViewer {
     {
         // Cache length of addresses to fetch entryFees for
         uint256 _poolCount = _tradingPools.length;
-        
+
         // Instantiate output array in memory
         uint256[] memory entryFees = new uint256[](_poolCount);
 
@@ -220,7 +298,7 @@ contract TradingPoolViewer {
     {
         // Cache length of addresses to fetch rebalanceFees for
         uint256 _poolCount = _tradingPools.length;
-        
+
         // Instantiate output array in memory
         uint256[] memory rebalanceFees = new uint256[](_poolCount);
 
@@ -240,7 +318,7 @@ contract TradingPoolViewer {
     {
         // Cache length of addresses to fetch rebalanceFees for
         uint256 _poolCount = _tradingPools.length;
-        
+
         // Instantiate streaming fees output array in memory
         uint256[] memory streamingFees = new uint256[](_poolCount);
 
@@ -249,7 +327,7 @@ contract TradingPoolViewer {
 
         for (uint256 i = 0; i < _poolCount; i++) {
             address rebalanceFeeCalculatorAddress = address(_tradingPools[i].rebalanceFeeCalculator());
-            
+
             (
                 streamingFees[i],
                 profitFees[i]
@@ -271,7 +349,7 @@ contract TradingPoolViewer {
     {
         // Cache length of addresses to fetch rebalanceFees for
         uint256 _poolCount = _tradingPools.length;
-        
+
         // Instantiate output array in memory
         PerformanceFeeLibrary.FeeState[] memory feeStates = new PerformanceFeeLibrary.FeeState[](_poolCount);
 
