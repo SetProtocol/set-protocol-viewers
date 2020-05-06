@@ -6435,6 +6435,35 @@ set-protocol-contracts@^1.4.5-beta:
     web3-utils "1.0.0-beta.36"
     zos-lib "^2.4.2"
 
+set-protocol-contracts@^1.4.9-beta:
+  version "1.4.9-beta"
+  resolved "https://registry.yarnpkg.com/set-protocol-contracts/-/set-protocol-contracts-1.4.9-beta.tgz#7907185d61451552916efa606b4a25e1d8df9ca6"
+  integrity sha512-D186K1DhlhRmIDRyHMmok/NtKZZqA2CSkkjTKYA0JDzuwgiASR5s4+LwRyRSZ7qJS+wnSRVMSUxOSo//c6kPNw==
+  dependencies:
+    bn-chai "^1.0.1"
+    canonical-weth "^1.3.1"
+    dotenv "^6.2.0"
+    eth-gas-reporter "^0.1.10"
+    ethlint "^1.2.3"
+    expect "^24.1.0"
+    fs-extra "^5.0.0"
+    husky "^0.14.3"
+    lint-staged "^7.2.0"
+    minify-all "^1.2.2"
+    module-alias "^2.1.0"
+    openzeppelin-solidity "^2.2"
+    set-protocol-contract-utils "^1.0.3"
+    set-protocol-oracles "^1.0.16"
+    set-protocol-utils "^1.1.2"
+    tiny-promisify "^1.0.0"
+    truffle-flattener "^1.4.0"
+    ts-mocha "^6.0.0"
+    ts-node "^8.0.2"
+    tslint-eslint-rules "^5.3.1"
+    web3 "1.0.0-beta.36"
+    web3-utils "1.0.0-beta.36"
+    zos-lib "^2.4.2"
+
 set-protocol-oracles@^1.0.16:
   version "1.0.16"
   resolved "https://registry.yarnpkg.com/set-protocol-oracles/-/set-protocol-oracles-1.0.16.tgz#15f1cb497feadc10673eb9193406bdd9c33ee3d6"
