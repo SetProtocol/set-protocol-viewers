@@ -5,11 +5,12 @@ import {
   CTokenViewerContract,
   ERC20ViewerContract,
   ManagerViewerContract,
-  TrendingManagerMockContract,
+  OracleViewerContract,
   ProtocolViewerContract,
   RebalancingSetTokenViewerContract,
   SocialTradingManagerMockContract,
   TradingPoolViewerContract,
+  TrendingManagerMockContract,
 } from '../contracts';
 import { getContractInstance, txnFrom } from '../web3Helper';
 import {
@@ -35,11 +36,12 @@ const Bytes32Library =
 const CTokenViewer = artifacts.require('CTokenViewer');
 const ERC20Viewer = artifacts.require('ERC20Viewer');
 const ManagerViewer = artifacts.require('ManagerViewer');
-const TrendingManagerMock = artifacts.require('TrendingManagerMock');
+const OracleViewer = artifacts.require('OracleViewer');
 const ProtocolViewer = artifacts.require('ProtocolViewer');
 const RebalancingSetTokenViewer = artifacts.require('RebalancingSetTokenViewer');
 const SocialTradingManagerMock = artifacts.require('SocialTradingManagerMock');
 const TradingPoolViewer = artifacts.require('TradingPoolViewer');
+const TrendingManagerMock = artifacts.require('TrendingManagerMock');
 
 const contract = require('truffle-contract');
 
@@ -87,6 +89,20 @@ export class ProtocolViewerHelper {
 
     return new ManagerViewerContract(
       getContractInstance(managerViewer),
+      txnFrom(from),
+    );
+  }
+
+  public async deployOracleViewerAsync(
+    from: Address = this._contractOwnerAddress
+  ): Promise<OracleViewerContract> {
+    const
+    oracleViewer = await OracleViewer.new(
+      txnFrom(from)
+    );
+
+    return new OracleViewerContract(
+      getContractInstance(oracleViewer),
       txnFrom(from),
     );
   }
