@@ -17,20 +17,15 @@
 pragma solidity 0.5.7;
 pragma experimental "ABIEncoderV2";
 
-import { ERC20Detailed } from "openzeppelin-solidity/contracts/token/ERC20/ERC20Detailed.sol";
-
 import { ISocialTradingManager } from "set-protocol-strategies/contracts/managers/interfaces/ISocialTradingManager.sol";
 import { SocialTradingLibrary } from "set-protocol-strategies/contracts/managers/lib/SocialTradingLibrary.sol";
 
-import { IFeeCalculator } from "set-protocol-contracts/contracts/core/interfaces/IFeeCalculator.sol";
-import { ILiquidator } from "set-protocol-contracts/contracts/core/interfaces/ILiquidator.sol";
 import { IPerformanceFeeCalculator } from "set-protocol-contracts/contracts/core/interfaces/IPerformanceFeeCalculator.sol";
 import { IRebalancingSetTokenV2 } from "set-protocol-contracts/contracts/core/interfaces/IRebalancingSetTokenV2.sol";
 import { IRebalancingSetTokenV3 } from "set-protocol-contracts/contracts/core/interfaces/IRebalancingSetTokenV3.sol";
-import { ITWAPAuctionGetters } from "set-protocol-contracts/contracts/core/interfaces/ITWAPAuctionGetters.sol";
-import { ISetToken } from "set-protocol-contracts/contracts/core/interfaces/ISetToken.sol";
 import { PerformanceFeeLibrary } from "set-protocol-contracts/contracts/core/fee-calculators/lib/PerformanceFeeLibrary.sol";
-import { RebalancingLibrary } from "set-protocol-contracts/contracts/core/lib/RebalancingLibrary.sol";
+
+import { RebalancingSetTokenViewer } from "./RebalancingSetTokenViewer.sol";
 
 
 /**
@@ -40,71 +35,26 @@ import { RebalancingLibrary } from "set-protocol-contracts/contracts/core/lib/Re
  * Interfaces for fetching multiple TradingPool state in a single read. Includes state
  * specific to managing pool as well as underlying RebalancingSetTokenV2 state.
  */
-contract TradingPoolViewer {
+contract TradingPoolViewer is RebalancingSetTokenViewer {
 
-    struct TradingPoolCreateInfo {
-        address manager;
-        address feeRecipient;
-        ISetToken currentSet;
-        uint256 unitShares;
-        uint256 naturalUnit;
-        uint256 rebalanceInterval;
-        uint256 entryFee;
-        uint256 rebalanceFee;
-        uint256 lastRebalanceTimestamp;
-        RebalancingLibrary.State rebalanceState;
-        string name;
-        string symbol;
-    }
-
-    struct TradingPoolRebalanceInfo {
-        uint256 rebalanceStartTime;
-        uint256 timeToPivot;
-        uint256 startPrice;
-        uint256 endPrice;
-        uint256 startingCurrentSets;
-        uint256 remainingCurrentSets;
-        uint256 minimumBid;
-        RebalancingLibrary.State rebalanceState;
-        ISetToken nextSet;
-        ILiquidator liquidator;
-    }
-
-    struct TradingPoolTWAPRebalanceInfo {
-        uint256 rebalanceStartTime;
-        uint256 timeToPivot;
-        uint256 startPrice;
-        uint256 endPrice;
-        uint256 startingCurrentSets;
-        uint256 remainingCurrentSets;
-        uint256 minimumBid;
-        RebalancingLibrary.State rebalanceState;
-        ISetToken nextSet;
-        ILiquidator liquidator;
-        uint256 orderSize;
-        uint256 orderRemaining;
-        uint256 totalSetsRemaining;
-        uint256 chunkSize;
-        uint256 chunkAuctionPeriod;
-        uint256 lastChunkAuctionEnd;
-    }
-
-    struct CollateralSetInfo {
-        address[] components;
-        uint256[] units;
-        uint256 naturalUnit;
-        string name;
-        string symbol;
-    }
-
+    /*
+     * Fetches TradingPool details. Compatible with:
+     * - RebalancingSetTokenV2/V3
+     * - Any Fee Calculator
+     * - Any Liquidator
+     *
+     * @param  _rebalancingSetToken           RebalancingSetToken contract instance
+     * @return RebalancingLibrary.State       Current rebalance state on the RebalancingSetToken
+     * @return uint256[]                      Starting current set, start time, minimum bid, and remaining current sets
+     */
     function fetchNewTradingPoolDetails(
         IRebalancingSetTokenV2 _tradingPool
     )
         external
         view
-        returns (SocialTradingLibrary.PoolInfo memory, TradingPoolCreateInfo memory, CollateralSetInfo memory)
+        returns (SocialTradingLibrary.PoolInfo memory, RebalancingSetCreateInfo memory, CollateralSetInfo memory)
     {
-        TradingPoolCreateInfo memory tradingPoolInfo = getTradingPoolInfo(
+        RebalancingSetCreateInfo memory tradingPoolInfo = getRebalancingSetInfo(
             address(_tradingPool)
         );
 
@@ -119,6 +69,16 @@ contract TradingPoolViewer {
         return (poolInfo, tradingPoolInfo, collateralSetInfo);
     }
 
+    /*
+     * Fetches TradingPoolV2 details. Compatible with:
+     * - RebalancingSetTokenV2/V3
+     * - PerformanceFeeCalculator
+     * - Any Liquidator
+     *
+     * @param  _rebalancingSetToken           RebalancingSetToken contract instance
+     * @return RebalancingLibrary.State       Current rebalance state on the RebalancingSetToken
+     * @return uint256[]                      Starting current set, start time, minimum bid, and remaining current sets
+     */
     function fetchNewTradingPoolV2Details(
         IRebalancingSetTokenV3 _tradingPool
     )
@@ -126,55 +86,47 @@ contract TradingPoolViewer {
         view
         returns (
             SocialTradingLibrary.PoolInfo memory,
-            TradingPoolCreateInfo memory,
+            RebalancingSetCreateInfo memory,
             PerformanceFeeLibrary.FeeState memory,
             CollateralSetInfo memory,
             address
         )
     {
-        TradingPoolCreateInfo memory tradingPoolInfo = getTradingPoolInfo(
-            address(_tradingPool)
-        );
+        (
+            RebalancingSetCreateInfo memory tradingPoolInfo,
+            PerformanceFeeLibrary.FeeState memory performanceFeeInfo,
+            CollateralSetInfo memory collateralSetInfo,
+            address performanceFeeCalculatorAddress
+        ) = fetchNewRebalancingSetDetails(_tradingPool);
 
         SocialTradingLibrary.PoolInfo memory poolInfo = ISocialTradingManager(tradingPoolInfo.manager).pools(
             address(_tradingPool)
         );
 
-        PerformanceFeeLibrary.FeeState memory performanceFeeInfo = getPerformanceFeeState(
-            address(_tradingPool)
-        );
-
-        CollateralSetInfo memory collateralSetInfo = getCollateralSetInfo(
-            tradingPoolInfo.currentSet
-        );
-
-        address performanceFeeCalculatorAddress = address(_tradingPool.rebalanceFeeCalculator());
-
         return (poolInfo, tradingPoolInfo, performanceFeeInfo, collateralSetInfo, performanceFeeCalculatorAddress);
     }
 
+    /*
+     * Fetches all TradingPool state associated with a new rebalance auction. Compatible with:
+     * - RebalancingSetTokenV2/V3
+     * - Any Fee Calculator
+     * - Any liquidator (will omit additional TWAPLiquidator state)
+     *
+     * @param  _rebalancingSetToken           RebalancingSetToken contract instance
+     * @return RebalancingLibrary.State       Current rebalance state on the RebalancingSetToken
+     * @return uint256[]                      Starting current set, start time, minimum bid, and remaining current sets
+     */
     function fetchTradingPoolRebalanceDetails(
         IRebalancingSetTokenV2 _tradingPool
     )
         external
         view
-        returns (SocialTradingLibrary.PoolInfo memory, TradingPoolRebalanceInfo memory, CollateralSetInfo memory)
+        returns (SocialTradingLibrary.PoolInfo memory, RebalancingSetRebalanceInfo memory, CollateralSetInfo memory)
     {
-        uint256[] memory auctionParams = _tradingPool.getAuctionPriceParameters();
-        uint256[] memory biddingParams = _tradingPool.getBiddingParameters();
-
-        TradingPoolRebalanceInfo memory tradingPoolInfo = TradingPoolRebalanceInfo({
-            rebalanceStartTime: auctionParams[0],
-            timeToPivot: auctionParams[1],
-            startPrice: auctionParams[2],
-            endPrice: auctionParams[3],
-            startingCurrentSets: _tradingPool.startingCurrentSetAmount(),
-            remainingCurrentSets: biddingParams[1],
-            minimumBid: biddingParams[0],
-            rebalanceState: _tradingPool.rebalanceState(),
-            nextSet: _tradingPool.nextSet(),
-            liquidator: _tradingPool.liquidator()
-        });
+        (
+            RebalancingSetRebalanceInfo memory tradingPoolInfo,
+            CollateralSetInfo memory collateralSetInfo
+        ) = fetchRBSetRebalanceDetails(_tradingPool);
 
         address manager = _tradingPool.manager();
 
@@ -182,57 +134,28 @@ contract TradingPoolViewer {
             address(_tradingPool)
         );
 
-        CollateralSetInfo memory collateralSetInfo = getCollateralSetInfo(_tradingPool.nextSet());
-
         return (poolInfo, tradingPoolInfo, collateralSetInfo);
     }
 
-    function fetchRBSetTWAPRebalanceDetails(
-        IRebalancingSetTokenV2 _rebalancingSetToken
-    )
-        public
-        view
-        returns (TradingPoolTWAPRebalanceInfo memory, CollateralSetInfo memory)
-    {
-        uint256[] memory auctionParams = _rebalancingSetToken.getAuctionPriceParameters();
-        uint256[] memory biddingParams = _rebalancingSetToken.getBiddingParameters();
-        ILiquidator liquidator = _rebalancingSetToken.liquidator();
-
-        ITWAPAuctionGetters twapStateGetters = ITWAPAuctionGetters(address(liquidator));
-
-        TradingPoolTWAPRebalanceInfo memory tradingPoolInfo = TradingPoolTWAPRebalanceInfo({
-            rebalanceStartTime: auctionParams[0],
-            timeToPivot: auctionParams[1],
-            startPrice: auctionParams[2],
-            endPrice: auctionParams[3],
-            startingCurrentSets: _rebalancingSetToken.startingCurrentSetAmount(),
-            remainingCurrentSets: biddingParams[1],
-            minimumBid: biddingParams[0],
-            rebalanceState: _rebalancingSetToken.rebalanceState(),
-            nextSet: _rebalancingSetToken.nextSet(),
-            liquidator: liquidator,
-            orderSize: twapStateGetters.getOrderSize(address(_rebalancingSetToken)),
-            orderRemaining: twapStateGetters.getOrderRemaining(address(_rebalancingSetToken)),
-            totalSetsRemaining: twapStateGetters.getTotalSetsRemaining(address(_rebalancingSetToken)),
-            chunkSize: twapStateGetters.getChunkSize(address(_rebalancingSetToken)),
-            chunkAuctionPeriod: twapStateGetters.getChunkAuctionPeriod(address(_rebalancingSetToken)),
-            lastChunkAuctionEnd: twapStateGetters.getLastChunkAuctionEnd(address(_rebalancingSetToken))
-        });
-
-        CollateralSetInfo memory collateralSetInfo = getCollateralSetInfo(_rebalancingSetToken.nextSet());
-
-        return (tradingPoolInfo, collateralSetInfo);
-    }
-
+    /*
+     * Fetches all TradingPool state associated with a new TWAP rebalance auction. Compatible with:
+     * - RebalancingSetTokenV2/V3
+     * - Any Fee Calculator
+     * - TWAP Liquidator
+     *
+     * @param  _rebalancingSetToken           RebalancingSetToken contract instance
+     * @return RebalancingLibrary.State       Current rebalance state on the RebalancingSetToken
+     * @return uint256[]                      Starting current set, start time, minimum bid, and remaining current sets
+     */
     function fetchTradingPoolTWAPRebalanceDetails(
         IRebalancingSetTokenV2 _tradingPool
     )
         external
         view
-        returns (SocialTradingLibrary.PoolInfo memory, TradingPoolTWAPRebalanceInfo memory, CollateralSetInfo memory)
+        returns (SocialTradingLibrary.PoolInfo memory, TWAPRebalanceInfo memory, CollateralSetInfo memory)
     {
         (
-            TradingPoolTWAPRebalanceInfo memory tradingPoolInfo,
+            TWAPRebalanceInfo memory tradingPoolInfo,
             CollateralSetInfo memory collateralSetInfo
         ) = fetchRBSetTWAPRebalanceDetails(_tradingPool);
 
@@ -360,61 +283,5 @@ contract TradingPoolViewer {
         }
 
         return feeStates;
-    }
-
-    /* ============ Internal Functions ============ */
-
-    function getCollateralSetInfo(
-        ISetToken _collateralSet
-    )
-        internal
-        view
-        returns (CollateralSetInfo memory)
-    {
-        return CollateralSetInfo({
-            components: _collateralSet.getComponents(),
-            units: _collateralSet.getUnits(),
-            naturalUnit: _collateralSet.naturalUnit(),
-            name: ERC20Detailed(address(_collateralSet)).name(),
-            symbol: ERC20Detailed(address(_collateralSet)).symbol()
-        });
-    }
-
-    function getTradingPoolInfo(
-        address _tradingPool
-    )
-        internal
-        view
-        returns (TradingPoolCreateInfo memory)
-    {
-        IRebalancingSetTokenV2 rebalancingSetTokenV2Instance = IRebalancingSetTokenV2(_tradingPool);
-
-        return TradingPoolCreateInfo({
-            manager: rebalancingSetTokenV2Instance.manager(),
-            feeRecipient: rebalancingSetTokenV2Instance.feeRecipient(),
-            currentSet: rebalancingSetTokenV2Instance.currentSet(),
-            unitShares: rebalancingSetTokenV2Instance.unitShares(),
-            naturalUnit: rebalancingSetTokenV2Instance.naturalUnit(),
-            rebalanceInterval: rebalancingSetTokenV2Instance.rebalanceInterval(),
-            entryFee: rebalancingSetTokenV2Instance.entryFee(),
-            rebalanceFee: rebalancingSetTokenV2Instance.rebalanceFee(),
-            lastRebalanceTimestamp: rebalancingSetTokenV2Instance.lastRebalanceTimestamp(),
-            rebalanceState: rebalancingSetTokenV2Instance.rebalanceState(),
-            name: rebalancingSetTokenV2Instance.name(),
-            symbol: rebalancingSetTokenV2Instance.symbol()
-        });
-    }
-
-    function getPerformanceFeeState(
-        address _tradingPool
-    )
-        internal
-        view
-        returns (PerformanceFeeLibrary.FeeState memory)
-    {
-        IRebalancingSetTokenV3 rebalancingSetTokenV3Instance = IRebalancingSetTokenV3(_tradingPool);
-
-        address rebalanceFeeCalculatorAddress = address(rebalancingSetTokenV3Instance.rebalanceFeeCalculator());
-        return IPerformanceFeeCalculator(rebalanceFeeCalculatorAddress).feeState(_tradingPool);
     }
 }

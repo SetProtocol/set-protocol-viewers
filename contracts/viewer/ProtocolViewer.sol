@@ -19,6 +19,7 @@ pragma experimental "ABIEncoderV2";
 
 import { ERC20Viewer } from "./lib/ERC20Viewer.sol";
 import { ManagerViewer } from "./lib/ManagerViewer.sol";
+import { OracleViewer } from "./lib/OracleViewer.sol";
 import { RebalancingSetTokenViewer } from "./lib/RebalancingSetTokenViewer.sol";
 import { TradingPoolViewer } from "./lib/TradingPoolViewer.sol";
 import { CTokenViewer } from "./lib/CTokenViewer.sol";
@@ -35,8 +36,8 @@ import { CTokenViewer } from "./lib/CTokenViewer.sol";
  /* solium-disable-next-line no-empty-blocks */
 contract ProtocolViewer is
     ERC20Viewer,
-    RebalancingSetTokenViewer,
     TradingPoolViewer,
     CTokenViewer,
-    ManagerViewer
+    ManagerViewer,
+    OracleViewer
 {}
