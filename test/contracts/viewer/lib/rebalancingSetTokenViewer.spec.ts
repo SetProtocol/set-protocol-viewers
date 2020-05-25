@@ -486,19 +486,22 @@ contract('RebalancingSetTokenViewer', accounts => {
         rangeEnd,
         'LinearLiquidator',
       );
-      const assetPairHashes = [
-        liquidatorHelper.generateAssetPairHashes(wrappedETH.address, wrappedBTC.address),
-      ];
+
+      const twapRangeStart = ether(.01);
+      const twapRangeEnd = ether(.23);
       const assetPairBounds = [
-        {min: ether(10 ** 4).toString(), max: ether(10 ** 6).toString()},
+        {
+          assetOne: wrappedETH.address,
+          assetTwo: wrappedBTC.address,
+          bounds: {lower: ether(10 ** 4).toString(), upper: ether(10 ** 6).toString()},
+        },
       ];
       twapLiquidator = await viewerHelper.deployTWAPLiquidatorAsync(
         coreMock.address,
         oracleWhiteList.address,
         auctionPeriod,
-        rangeStart,
-        rangeEnd,
-        assetPairHashes,
+        twapRangeStart,
+        twapRangeEnd,
         assetPairBounds,
         'TWAPLiquidator',
       );
