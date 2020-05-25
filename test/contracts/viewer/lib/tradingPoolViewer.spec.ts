@@ -95,6 +95,8 @@ contract('TradingPoolViewer', accounts => {
   let auctionPeriod: BigNumber;
   let rangeStart: BigNumber;
   let rangeEnd: BigNumber;
+  let twapRangeStart: BigNumber;
+  let twapRangeEnd: BigNumber;
   let oracleWhiteList: OracleWhiteListContract;
 
   let component1: StandardTokenMockContract;
@@ -220,19 +222,21 @@ contract('TradingPoolViewer', accounts => {
     );
     await coreHelper.addAddressToWhiteList(liquidator.address, liquidatorWhitelist);
 
-    const assetPairHashes = [
-      liquidatorHelper.generateAssetPairHashes(component1.address, component2.address),
-    ];
+    twapRangeStart = ether(.01);
+    twapRangeEnd = ether(.23);
     const assetPairBounds = [
-      {min: ether(10 ** 4).toString(), max: ether(10 ** 6).toString()},
+      {
+        assetOne: component1.address,
+        assetTwo: component2.address,
+        bounds: {lower: ether(10 ** 4).toString(), upper: ether(10 ** 6).toString()},
+      },
     ];
     twapLiquidator = await viewerHelper.deployTWAPLiquidatorAsync(
       coreMock.address,
       oracleWhiteList.address,
       auctionPeriod,
-      rangeStart,
-      rangeEnd,
-      assetPairHashes,
+      twapRangeStart,
+      twapRangeEnd,
       assetPairBounds,
       name,
     );

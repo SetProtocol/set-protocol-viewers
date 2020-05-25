@@ -228,15 +228,10 @@ export class ProtocolViewerHelper {
     auctionPeriod: BigNumber,
     rangeStart: BigNumber,
     rangeEnd: BigNumber,
-    assetPairHashes: string[],
-    assetPairBounds: {}[],
+    assetPairVolumeBounds: {}[],
     name: string,
     from: Address = this._contractOwnerAddress
   ): Promise<TWAPLiquidatorContract> {
-    const assetPairBoundsStr = [];
-    for (let i = 0; i < assetPairBounds.length; i++) {
-      assetPairBoundsStr.push(assetPairBounds[i]);
-    }
     const truffleLiquidator = this.setDefaultTruffleContract(web3, TWAPLiquidator);
     const twapLiquidator = await truffleLiquidator.new(
       core,
@@ -244,8 +239,7 @@ export class ProtocolViewerHelper {
       auctionPeriod,
       rangeStart,
       rangeEnd,
-      assetPairHashes,
-      assetPairBoundsStr,
+      assetPairVolumeBounds,
       name,
       txnFrom(from)
     );
